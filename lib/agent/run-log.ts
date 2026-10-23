@@ -1,7 +1,7 @@
 // Audit log of agent runs. One record per run: who asked, what the agent
 // called, what each call returned, and how the run ended. Records are kept in
 // the in-memory store for the Runs tab and printed as one JSON line when the
-// run ends so that hosting logs (for example Vercel runtime logs) keep a copy.
+// run ends so the server logs keep a copy.
 
 import { getStore } from '@/lib/data/store';
 import type { FaultConfig, ServiceName } from '@/lib/types';

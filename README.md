@@ -2,7 +2,7 @@
 
 An e-commerce support app where customers chat with an AI agent that investigates order problems on its own and takes action: it looks up orders and tracking, applies the refund policy, issues refunds, escalates to a human, and copes with backend failures.
 
-**Live demo:** _add the Vercel URL here after deploying_
+The app runs locally. See "Run it locally" below.
 
 **Demo logins** (also listed on the login page):
 
@@ -113,7 +113,7 @@ The right-hand panel shows the backend data, refunds and tickets, the run log, a
 
 ## Run log
 
-Each agent run is recorded with the customer, the message, each tool call's input and result, backend attempts, the final reply, token usage, and how it ended. The Runs tab shows these, and each finished run is also printed as one JSON line so Vercel's runtime logs keep a copy.
+Each agent run is recorded with the customer, the message, each tool call's input and result, backend attempts, the final reply, token usage, and how it ended. The Runs tab shows these, and each finished run is also printed to the server console as one JSON line.
 
 ## Tests
 
@@ -128,7 +128,7 @@ Each agent run is recorded with the customer, the message, each tool call's inpu
 
 ## Known limits
 
-- Data, run locks, and the login limiter live in memory, per server instance. On Vercel a new instance starts with fresh seed data, and two instances do not share locks. The browser queue still prevents overlapping runs from one tab. A shared store such as Redis or Postgres fixes this in production.
+- Data, run locks, and the login limiter live in memory. Restarting the server resets everything to the seed data. Running more than one server process would need a shared store such as Redis or Postgres.
 - Demo passwords are public on purpose.
 - The fault injector is controlled by the browser for the demo. In production it would not exist.
 

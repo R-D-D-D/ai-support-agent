@@ -1,8 +1,8 @@
 // In-memory data store for the simulated backend.
 //
 // The store lives on globalThis so that Next.js hot reloads in development do
-// not wipe it. It is per server process: on Vercel each instance has its own
-// copy (see "Known limits" in the README).
+// not wipe it. It is per server process and resets when the server restarts
+// (see "Known limits" in the README).
 
 import { buildSeed, type SeedData } from '@/lib/data/seed';
 import type { RunRecord } from '@/lib/agent/run-log';
