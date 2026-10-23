@@ -1,16 +1,17 @@
 // Builds the support agent for one signed-in customer and one request.
 
 import { isStepCount, ToolLoopAgent, type LanguageModel } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
+import { openai } from '@ai-sdk/openai';
 import { buildSystemPrompt } from '@/lib/agent/system-prompt';
 import { buildTools } from '@/lib/agent/tools';
 import type { Gateway } from '@/lib/gateway/tool-gateway';
 
 export const MAX_STEPS = 8;
-export const DEFAULT_MODEL = 'claude-sonnet-5-5';
+// The default openai() factory uses the OpenAI Responses API.
+export const DEFAULT_MODEL = 'gpt-6-astra';
 
 export function defaultModel(): LanguageModel {
-  return anthropic(process.env.ANTHROPIC_MODEL || DEFAULT_MODEL);
+  return openai(process.env.OPENAI_MODEL || DEFAULT_MODEL);
 }
 
 export function createSupportAgent(input: {

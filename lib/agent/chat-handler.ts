@@ -68,8 +68,8 @@ export async function handleChat(req: Request, options: { model?: LanguageModel 
     return jsonError(413, 'message_too_long', `Messages are limited to ${MAX_MESSAGE_CHARS} characters.`);
   }
 
-  if (!options.model && !process.env.ANTHROPIC_API_KEY) {
-    return jsonError(503, 'model_not_configured', 'ANTHROPIC_API_KEY is not set on the server.');
+  if (!options.model && !process.env.OPENAI_API_KEY) {
+    return jsonError(503, 'model_not_configured', 'OPENAI_API_KEY is not set on the server.');
   }
 
   const runId = randomUUID();

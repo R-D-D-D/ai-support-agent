@@ -15,7 +15,7 @@
     "scenarios": "tsx scripts/run-scenarios.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "4",
+    "@ai-sdk/openai": "^4.0.101",
     "@ai-sdk/react": "4",
     "ai": "7",
     "clsx": "^2.1.1",

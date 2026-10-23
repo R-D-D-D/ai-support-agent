@@ -1,7 +1,7 @@
 // Runs the seven demo scenarios against the real model, in process, and
 // prints which tools the agent called and whether that matches what we expect.
 //
-// Usage: pnpm scenarios        (needs ANTHROPIC_API_KEY in .env.local or the environment)
+// Usage: pnpm scenarios        (needs OPENAI_API_KEY in .env.local or the environment)
 //        pnpm scenarios 2 5    (run only scenarios 2 and 5)
 
 import { handleChat } from '@/lib/agent/chat-handler';
@@ -141,8 +141,8 @@ async function runScenario(s: Scenario): Promise<boolean> {
 }
 
 async function main() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error('Set ANTHROPIC_API_KEY (for example in .env.local) first.');
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('Set OPENAI_API_KEY (for example in .env.local) first.');
     process.exit(1);
   }
   const only = process.argv.slice(2).map(Number).filter(Boolean);

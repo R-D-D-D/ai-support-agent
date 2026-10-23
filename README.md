@@ -18,7 +18,7 @@ Needs Node 22.12 or newer and pnpm.
 
 ```bash
 pnpm install
-cp .env.example .env.local   # then add ANTHROPIC_API_KEY and SESSION_SECRET
+cp .env.example .env.local   # then add OPENAI_API_KEY and SESSION_SECRET
 pnpm dev                     # http://localhost:3000
 pnpm test                    # 85 tests, no API key needed
 pnpm scenarios               # runs the 7 demo scenarios against the real model
@@ -28,7 +28,7 @@ pnpm scenarios               # runs the 7 demo scenarios against the real model
 
 - Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
 - Vercel AI SDK 7: `ToolLoopAgent` for the tool loop, `useChat` for streaming
-- Claude `claude-sonnet-5-5` through `@ai-sdk/anthropic`
+- OpenAI `gpt-6-astra` through `@ai-sdk/openai`, using the Responses API. Set `OPENAI_MODEL` to use another model
 - zod for every input and backend response, jose for signed session cookies
 - Vitest, with the AI SDK mock model for deterministic agent tests
 
@@ -42,7 +42,7 @@ Browser ── login ──> /api/auth/login ── sets signed HttpOnly cookie
 /api/chat ── verify session ── run lock (1 run per customer) ── input limits
    │
    ▼
-ToolLoopAgent (Claude, max 8 steps)
+ToolLoopAgent (OpenAI, max 8 steps)
    │  tools: list_my_orders, get_order_details, get_shipment_tracking,
    │         check_refund_eligibility, issue_refund, escalate_to_human
    ▼
