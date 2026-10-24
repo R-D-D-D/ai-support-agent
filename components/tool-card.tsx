@@ -9,6 +9,7 @@ interface ToolPartLike {
   input?: unknown;
   output?: unknown;
   errorText?: string;
+  approval?: { id: string; approved?: boolean; requestReason?: string; reason?: string; isAutomatic?: boolean };
 }
 
 const LABELS: Record<string, string> = {
@@ -16,22 +17,94 @@ const LABELS: Record<string, string> = {
   get_order_details: 'Looked up order',
   get_shipment_tracking: 'Checked tracking',
   check_refund_eligibility: 'Checked refund policy',
-  issue_refund: 'Issued refund',
-  escalate_to_human: 'Escalated to a human',
+  issue_refund: 'Refund',
+  request_staff_refund: 'Refund request for staff',
+  escalate_to_human: 'Support ticket',
 };
+
+// Shown in place of the normal card when the agent wants to change data and
+// needs the customer's go-ahead.
+function ApprovalPrompt({
+  part,
+  onRespond,
+}: {
+  part: ToolPartLike;
+  onRespond?: (id: string, approved: boolean) => void;
+}) {
+  const name = part.type.replace(/^tool-/, '');
+  const [answered, setAnswered] = useState(false);
+  const respond = (approved: boolean) => {
+    if (!part.approval || answered) return;
+    setAnswered(true);
+    onRespond?.(part.approval.id, approved);
+  };
+  return (
+    <div className="my-2 rounded-lg border-2 border-indigo-300 bg-white px-3 py-3 text-sm">
+      <div className="text-xs font-medium uppercase tracking-wide text-indigo-700 mb-1">
+        {LABELS[name] ?? name} · your approval needed
+      </div>
+      <p className="text-gray-900">{part.approval?.requestReason ?? 'The assistant wants to take an action.'}</p>
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={() => respond(true)}
+          disabled={answered}
+          className="rounded-md bg-indigo-600 px-3 py-1.5 text-white font-medium hover:bg-indigo-700 disabled:opacity-60"
+        >
+          Approve
+        </button>
+        <button
+          onClick={() => respond(false)}
+          disabled={answered}
+          className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-60"
+        >
+          Decline
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // One card per tool call in the chat, showing what the agent called, with what
 // input, and what came back.
-export function ToolCard({ part }: { part: ToolPartLike }) {
+export function ToolCard({
+  part,
+  onApprovalResponse,
+}: {
+  part: ToolPartLike;
+  onApprovalResponse?: (id: string, approved: boolean) => void;
+}) {
   const [open, setOpen] = useState(false);
+  if (part.state === 'approval-requested' && !part.approval?.isAutomatic) {
+    return <ApprovalPrompt part={part} onRespond={onApprovalResponse} />;
+  }
+  return <ToolSummary part={part} open={open} setOpen={setOpen} />;
+}
+
+function ToolSummary({ part, open, setOpen }: { part: ToolPartLike; open: boolean; setOpen: (fn: (o: boolean) => boolean) => void }) {
   const name = part.type.replace(/^tool-/, '');
   const output = part.output as { ok?: boolean; error?: { code: string; message: string; attempts?: number }; data?: unknown } | undefined;
 
-  const running = part.state === 'input-streaming' || part.state === 'input-available';
-  const failed = part.state === 'output-error' || output?.ok === false;
+  const running =
+    part.state === 'input-streaming' || part.state === 'input-available' || part.state === 'approval-responded';
+  const denied = part.state === 'output-denied';
+  const failed = denied || part.state === 'output-error' || output?.ok === false;
   const orderId = (part.input as { orderId?: string } | undefined)?.orderId;
 
-  let summary = running ? 'running…' : failed ? output?.error?.code ?? 'error' : 'ok';
+  let summary = running
+    ? part.state === 'approval-responded'
+      ? part.approval?.approved
+        ? 'approved, running…'
+        : 'declined'
+      : 'running…'
+    : denied
+      ? part.approval?.isAutomatic
+        ? 'not allowed'
+        : part.approval?.approved
+          ? 'approval not accepted'
+          : 'you declined'
+      : failed
+        ? output?.error?.code ?? 'error'
+        : 'ok';
   if (!running && name === 'check_refund_eligibility' && output?.ok) {
     summary = String((output.data as { action?: string }).action);
   }
@@ -70,6 +143,12 @@ export function ToolCard({ part }: { part: ToolPartLike }) {
             <div className="text-gray-500">Input</div>
             <pre className="whitespace-pre-wrap break-all font-mono text-[11px] text-gray-800">{JSON.stringify(part.input, null, 2)}</pre>
           </div>
+          {denied && part.approval?.reason && (
+            <div>
+              <div className="text-gray-500">{part.approval.isAutomatic ? 'Why it was not allowed' : 'Your answer'}</div>
+              <div className="text-gray-800">{part.approval.reason}</div>
+            </div>
+          )}
           {(part.output !== undefined || part.errorText) && (
             <div>
               <div className="text-gray-500">Result</div>

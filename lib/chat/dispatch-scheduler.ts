@@ -7,6 +7,8 @@
 //   - Nothing is sent while a run is in progress. When the run ends, anything
 //     queued meanwhile follows the same quiet-window rule.
 //   - Everything queued goes out together as one batch.
+//   - Nothing is sent while the customer still has to answer an approval card
+//     ("blocked"). Their answer starts its own run.
 //
 // Framework-free so it can be unit-tested with fake timers. The React hook in
 // hooks/use-queued-chat.ts drives it.
@@ -21,6 +23,7 @@ export interface QueuedMessage {
 export interface SchedulerState {
   pending: QueuedMessage[];
   running: boolean;
+  blocked: boolean;
   // When the queue will be sent, if a send is scheduled.
   sendAt: number | null;
 }
@@ -34,6 +37,7 @@ export interface DispatchSchedulerOptions {
 export class DispatchScheduler {
   private pending: QueuedMessage[] = [];
   private running = false;
+  private blocked = false;
   private lastActivityAt = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private sendAt: number | null = null;
@@ -62,13 +66,26 @@ export class DispatchScheduler {
     this.schedule();
   }
 
+  // A run started outside the queue, for example after an approval answer.
+  runStarted(): void {
+    this.running = true;
+    this.schedule();
+  }
+
   runFinished(): void {
     this.running = false;
     this.schedule();
   }
 
+  // Holds the queue while an approval card is waiting for the customer.
+  setBlocked(blocked: boolean): void {
+    if (this.blocked === blocked) return;
+    this.blocked = blocked;
+    this.schedule();
+  }
+
   getState(): SchedulerState {
-    return { pending: [...this.pending], running: this.running, sendAt: this.sendAt };
+    return { pending: [...this.pending], running: this.running, blocked: this.blocked, sendAt: this.sendAt };
   }
 
   subscribe(listener: (state: SchedulerState) => void): () => void {
@@ -83,7 +100,7 @@ export class DispatchScheduler {
 
   private schedule(): void {
     this.clearTimer();
-    if (!this.running && this.pending.length > 0) {
+    if (!this.running && !this.blocked && this.pending.length > 0) {
       const wait = Math.max(0, this.lastActivityAt + this.quietMs - this.now());
       this.sendAt = this.now() + wait;
       this.timer = setTimeout(() => this.fire(), wait);
@@ -94,7 +111,7 @@ export class DispatchScheduler {
   private fire(): void {
     this.timer = null;
     this.sendAt = null;
-    if (this.running || this.pending.length === 0) return this.emit();
+    if (this.running || this.blocked || this.pending.length === 0) return this.emit();
     const batch = this.pending.splice(0);
     this.running = true;
     this.emit();

@@ -25,11 +25,15 @@ export const SERVICE_NAMES: ServiceName[] = ['orders', 'shipments', 'refunds', '
 
 export type FaultConfig = Partial<Record<ServiceName, FaultMode>>;
 
+export type UserRole = 'customer' | 'staff';
+
+// Everyone who can sign in. Staff accounts have no orders and use the staff page.
 export interface Customer {
   id: string;
   name: string;
   email: string;
   passwordHash: string;
+  role: UserRole;
 }
 
 export interface OrderItem {
@@ -50,6 +54,10 @@ export interface Order {
   currency: 'USD';
   status: OrderStatus;
   shipmentId: string;
+  // Set by the fraud team. Flagged orders are never refunded by the bot.
+  riskFlag: boolean;
+  // Refunds wait until the original payment has settled.
+  paymentStatus: 'settled' | 'pending';
   // Staff-only notes. The gateway never returns this field to the agent.
   internalNotes: string;
 }
@@ -89,6 +97,32 @@ export interface Refund {
   reason: string;
   createdAt: string;
   status: 'issued';
+  // 'bot' for refunds the agent issued after the customer approved, otherwise
+  // the id of the staff member who approved the refund request.
+  issuedBy: string;
+  // The staff refund request this refund came from, if any.
+  requestId: string | null;
+}
+
+// A refund the bot may not issue itself, waiting for a staff decision.
+export interface RefundRequest {
+  id: string;
+  orderId: string;
+  customerId: string;
+  amount: number;
+  currency: 'USD';
+  claim: 'delayed' | 'missing';
+  // Why the bot could not refund it directly, in customer-safe words.
+  reviewReasons: string[];
+  // Context the agent wrote for staff. Customer-influenced, so shown as such.
+  agentNote: string;
+  status: 'pending' | 'approved' | 'denied';
+  createdAt: string;
+  decidedAt: string | null;
+  decidedBy: string | null;
+  // Optional note from staff, shown to the customer.
+  decisionNote: string | null;
+  refundId: string | null;
 }
 
 export interface Ticket {

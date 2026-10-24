@@ -97,4 +97,25 @@ describe('dispatch scheduler', () => {
   it('joins a batch with new lines', () => {
     expect(joinBatch([{ id: 'a', text: 'one' }, { id: 'b', text: 'two' }])).toBe('one\ntwo');
   });
+
+  it('holds the queue while an approval card is waiting', () => {
+    scheduler.setBlocked(true);
+    scheduler.enqueue('one more thing');
+    vi.advanceTimersByTime(10_000);
+    expect(sent).toEqual([]);
+    expect(scheduler.getState().blocked).toBe(true);
+    scheduler.setBlocked(false);
+    vi.advanceTimersByTime(0);
+    expect(sent).toEqual([['one more thing']]);
+  });
+
+  it('waits for a run started outside the queue, such as an approval answer', () => {
+    scheduler.runStarted();
+    scheduler.enqueue('hello');
+    vi.advanceTimersByTime(10_000);
+    expect(sent).toEqual([]);
+    scheduler.runFinished();
+    vi.advanceTimersByTime(0);
+    expect(sent).toEqual([['hello']]);
+  });
 });

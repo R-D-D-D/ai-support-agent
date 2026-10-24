@@ -41,6 +41,19 @@ function trimHistory(messages: UIMessage[]): UIMessage[] {
   return firstUser === -1 ? [] : recent.slice(firstUser);
 }
 
+// When the customer answers an approval card, the browser sends the history
+// back with the answer inside the last assistant message. Returns a short
+// description of the answers for the run log, or null if there are none.
+function approvalAnswers(message: UIMessage): string | null {
+  const answers = message.parts.flatMap((p) => {
+    const part = p as { type: string; state?: string; approval?: { approved?: boolean; requestReason?: string } };
+    if (!part.type.startsWith('tool-') || part.state !== 'approval-responded') return [];
+    const verdict = part.approval?.approved ? 'Customer approved' : 'Customer declined';
+    return [`${verdict}: ${part.approval?.requestReason ?? part.type.slice(5)}`];
+  });
+  return answers.length ? answers.join('\n') : null;
+}
+
 function jsonError(status: number, error: string, message: string): Response {
   return Response.json({ error, message }, { status });
 }
@@ -49,6 +62,9 @@ function jsonError(status: number, error: string, message: string): Response {
 export async function handleChat(req: Request, options: { model?: LanguageModel } = {}): Promise<Response> {
   const customer = await getSessionCustomer(req);
   if (!customer) return unauthorized();
+  if (customer.role !== 'customer') {
+    return jsonError(403, 'forbidden', 'Staff accounts use the staff page, not the customer chat.');
+  }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError(400, 'invalid_request', 'The request body is not valid.');
@@ -58,14 +74,24 @@ export async function handleChat(req: Request, options: { model?: LanguageModel 
   // The browser cannot inject system messages.
   const messages = trimHistory(validated.data.filter((m) => m.role !== 'system'));
 
+  // A turn starts either with a new customer message, or with the customer's
+  // answer to an approval card (inside the last assistant message). Whether an
+  // approval is genuine is checked later, by the AI SDK's signature check and
+  // by the gateway's own approval records.
   const last = messages.at(-1);
-  if (!last || last.role !== 'user') {
-    return jsonError(400, 'invalid_messages', 'The last message must come from the customer.');
-  }
-  const userText = messageText(last);
-  if (!userText) return jsonError(400, 'empty_message', 'The message is empty.');
-  if (userText.length > MAX_MESSAGE_CHARS) {
-    return jsonError(413, 'message_too_long', `Messages are limited to ${MAX_MESSAGE_CHARS} characters.`);
+  let userText: string;
+  if (last?.role === 'user') {
+    userText = messageText(last);
+    if (!userText) return jsonError(400, 'empty_message', 'The message is empty.');
+    if (userText.length > MAX_MESSAGE_CHARS) {
+      return jsonError(413, 'message_too_long', `Messages are limited to ${MAX_MESSAGE_CHARS} characters.`);
+    }
+  } else {
+    const answers = last ? approvalAnswers(last) : null;
+    if (!answers) {
+      return jsonError(400, 'invalid_messages', 'The last message must come from the customer.');
+    }
+    userText = answers;
   }
 
   if (!options.model && !process.env.OPENAI_API_KEY) {

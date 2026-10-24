@@ -3,7 +3,7 @@
 // customers' data never reach the model.
 
 import { untrusted, type UntrustedText } from '@/lib/gateway/untrusted';
-import type { Order, Refund, Shipment, Ticket } from '@/lib/types';
+import type { Order, Refund, RefundRequest, Shipment, Ticket } from '@/lib/types';
 
 export interface OrderSummaryDto {
   orderId: string;
@@ -46,7 +46,29 @@ export function ticketDto(t: Ticket) {
   };
 }
 
-export function orderDetailDto(o: Order, refund: Refund | null, ticket: Ticket | null) {
+// Status of a staff refund request. The agent note and internal review
+// details stay out; the staff decision note is meant for the customer.
+export function refundRequestDto(r: RefundRequest) {
+  return {
+    requestId: r.id,
+    orderId: r.orderId,
+    amount: r.amount,
+    currency: r.currency,
+    status: r.status,
+    reviewReasons: r.reviewReasons,
+    createdAt: r.createdAt,
+    decidedAt: r.decidedAt,
+    decisionNote: r.decisionNote,
+    refundId: r.refundId,
+  };
+}
+
+export function orderDetailDto(
+  o: Order,
+  refund: Refund | null,
+  request: RefundRequest | null,
+  ticket: Ticket | null,
+) {
   return {
     orderId: o.id,
     placedAt: o.placedAt,
@@ -55,6 +77,7 @@ export function orderDetailDto(o: Order, refund: Refund | null, ticket: Ticket |
     total: o.total,
     currency: o.currency,
     refund: refund ? refundDto(refund) : null,
+    refundRequest: request ? refundRequestDto(request) : null,
     openTicket: ticket ? ticketDto(ticket) : null,
   };
 }

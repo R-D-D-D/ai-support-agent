@@ -108,7 +108,13 @@ export function Chat(props: {
               {m.parts.map((part, i) => {
                 if (part.type === 'text') return <RichText key={i} text={part.text} />;
                 if (part.type.startsWith('tool-')) {
-                  return <ToolCard key={i} part={part as unknown as Parameters<typeof ToolCard>[0]['part']} />;
+                  return (
+                    <ToolCard
+                      key={i}
+                      part={part as unknown as Parameters<typeof ToolCard>[0]['part']}
+                      onApprovalResponse={chat.respondToApproval}
+                    />
+                  );
                 }
                 return null;
               })}
@@ -123,7 +129,11 @@ export function Chat(props: {
             <div className="max-w-[85%] rounded-2xl rounded-br-sm border border-dashed border-indigo-300 bg-indigo-50 text-indigo-900 px-4 py-2 text-sm">
               <span className="whitespace-pre-wrap">{q.text}</span>
               <div className="text-[11px] text-indigo-500 mt-1">
-                {chat.busy ? 'Queued until the assistant finishes' : 'Queued'}
+                {chat.busy
+                  ? 'Queued until the assistant finishes'
+                  : chat.awaitingApproval
+                    ? 'Queued until you answer the request above'
+                    : 'Queued'}
               </div>
             </div>
           </div>
@@ -140,7 +150,8 @@ export function Chat(props: {
       <div className="border-t border-gray-200 px-4 sm:px-6 py-3">
         <div className="h-5 text-xs text-gray-500 mb-1">
           {chat.busy && chat.status !== 'ready' ? 'Assistant is working. You can keep typing; new messages will queue.' : null}
-          {!chat.busy && secondsLeft !== null && `Sending in ${secondsLeft}s… keep typing to add more.`}
+          {!chat.busy && chat.awaitingApproval && 'Approve or decline the request above. New messages wait until you answer.'}
+          {!chat.busy && !chat.awaitingApproval && secondsLeft !== null && `Sending in ${secondsLeft}s… keep typing to add more.`}
         </div>
         {faultsOn.length > 0 && (
           <div className="text-xs text-amber-700 mb-1">

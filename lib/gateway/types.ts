@@ -6,6 +6,7 @@ export type ToolErrorCode =
   | 'not_found'
   | 'not_eligible'
   | 'limit_reached'
+  | 'approval_required'
   | 'timeout'
   | 'server_error'
   | 'rate_limited'

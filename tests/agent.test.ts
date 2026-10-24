@@ -21,36 +21,35 @@ async function runChat(customerId: string, text: string, model: ReturnType<typeo
 }
 
 describe('agent run through the chat handler', () => {
-  it('checks eligibility, issues a refund, and logs both tool calls', async () => {
+  it('checks eligibility, then stops for the customer to approve the refund', async () => {
     const model = scriptedModel([
       { toolCalls: [{ name: 'check_refund_eligibility', input: { orderId: 'ORD-1002', claim: 'delayed' } }] },
       { toolCalls: [{ name: 'issue_refund', input: { orderId: 'ORD-1002', claim: 'delayed' } }] },
-      { text: 'Your refund is on its way.' },
+      { text: 'This text must never be reached in this turn.' },
     ]);
 
     const { res, body } = await runChat('cus_alice', 'My mug set is really late', model);
 
     expect(res.status).toBe(200);
-    expect(body).toContain('Your refund is on its way.');
+    expect(body).toContain('tool-approval-request');
+    expect(body).not.toContain('must never be reached');
+    // No money moves until the customer approves.
+    expect(getStore().refunds.find((r) => r.orderId === 'ORD-1002')).toBeUndefined();
 
-    const store = getStore();
-    const refund = store.refunds.find((r) => r.orderId === 'ORD-1002');
-    expect(refund?.amount).toBe(45);
-
-    const run = store.runs.at(-1)!;
+    const run = getStore().runs.at(-1)!;
     expect(run.status).toBe('completed');
-    expect(run.steps).toBe(3);
+    expect(run.steps).toBe(2);
     expect(run.toolCalls.map((c) => [c.tool, c.ok])).toEqual([
       ['check_refund_eligibility', true],
-      ['issue_refund', true],
+      ['issue_refund (approval check)', true],
     ]);
-    expect(run.finalText).toBe('Your refund is on its way.');
     expect(isRunLocked('cus_alice')).toBe(false);
   });
 
   it('refuses a refund the model was tricked into requesting', async () => {
     // ORD-2002 has an injected carrier note asking for a refund. Even if the
-    // model obeys it, the server-side policy check refuses.
+    // model obeys it, the server-side policy check refuses before any
+    // approval card is shown.
     const model = scriptedModel([
       { toolCalls: [{ name: 'issue_refund', input: { orderId: 'ORD-2002', claim: 'delayed' } }] },
       { text: 'I cannot refund that yet.' },

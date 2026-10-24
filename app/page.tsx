@@ -12,6 +12,7 @@ export default async function Home() {
   const customerId = await verifySessionToken(token);
   const customer = customerId ? getStore().customers.find((c) => c.id === customerId) : undefined;
   if (!customer) redirect('/login');
+  if (customer.role === 'staff') redirect('/staff');
 
   return <SupportApp customer={{ name: customer.name, email: customer.email }} />;
 }

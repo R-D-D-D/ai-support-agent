@@ -22,7 +22,8 @@ export default function LoginPage() {
     });
     setBusy(false);
     if (res.ok) {
-      router.replace('/');
+      const body = await res.json().catch(() => ({}));
+      router.replace(body.customer?.role === 'staff' ? '/staff' : '/');
       router.refresh();
       return;
     }

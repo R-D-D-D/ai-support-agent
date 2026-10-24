@@ -40,3 +40,11 @@ export async function listTicketsForCustomer(customerId: string): Promise<Ticket
   await simulatedLatency();
   return structuredClone(getStore().tickets.filter((t) => t.customerId === customerId));
 }
+
+// How many tickets a customer opened in the 24 hours before `now`.
+export function ticketsOpenedInLastDay(customerId: string, now: Date = new Date()): number {
+  const since = now.getTime() - 24 * 60 * 60 * 1000;
+  return getStore().tickets.filter(
+    (t) => t.customerId === customerId && new Date(t.createdAt).getTime() > since,
+  ).length;
+}

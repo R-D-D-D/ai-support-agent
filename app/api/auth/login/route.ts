@@ -30,7 +30,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const token = await createSessionToken(result.customer.id);
   return Response.json(
-    { ok: true, customer: { name: result.customer.name, email: result.customer.email } },
+    { ok: true, customer: { name: result.customer.name, email: result.customer.email, role: result.customer.role } },
     { headers: { 'Set-Cookie': sessionCookieHeader(token) } },
   );
 }

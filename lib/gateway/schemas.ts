@@ -20,6 +20,8 @@ export const orderSchema = z.object({
   currency: z.literal('USD'),
   status: z.enum(['processing', 'shipped', 'delivered', 'cancelled']),
   shipmentId: z.string(),
+  riskFlag: z.boolean(),
+  paymentStatus: z.enum(['settled', 'pending']),
   internalNotes: z.string(),
 });
 
@@ -44,6 +46,25 @@ export const refundSchema = z.object({
   reason: z.string(),
   createdAt: z.string(),
   status: z.literal('issued'),
+  issuedBy: z.string(),
+  requestId: z.string().nullable(),
+});
+
+export const refundRequestSchema = z.object({
+  id: z.string(),
+  orderId: z.string(),
+  customerId: z.string(),
+  amount: z.number(),
+  currency: z.literal('USD'),
+  claim: z.enum(['delayed', 'missing']),
+  reviewReasons: z.array(z.string()),
+  agentNote: z.string(),
+  status: z.enum(['pending', 'approved', 'denied']),
+  createdAt: z.string(),
+  decidedAt: z.string().nullable(),
+  decidedBy: z.string().nullable(),
+  decisionNote: z.string().nullable(),
+  refundId: z.string().nullable(),
 });
 
 export const ticketSchema = z.object({
@@ -58,4 +79,5 @@ export const ticketSchema = z.object({
 });
 
 export const createdRefundSchema = z.object({ refund: refundSchema, created: z.boolean() });
+export const createdRefundRequestSchema = z.object({ request: refundRequestSchema, created: z.boolean() });
 export const createdTicketSchema = z.object({ ticket: ticketSchema, created: z.boolean() });

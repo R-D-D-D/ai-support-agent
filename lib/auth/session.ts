@@ -18,6 +18,17 @@ function secretKey(): Uint8Array {
   return new TextEncoder().encode('dev-only-insecure-session-secret-change-me');
 }
 
+// Secret the AI SDK uses to sign approval requests. Derived from the session
+// secret so there is one fewer setting to manage.
+export function approvalSigningSecret(): Uint8Array {
+  const base = secretKey();
+  const suffix = new TextEncoder().encode(':tool-approvals');
+  const out = new Uint8Array(base.length + suffix.length);
+  out.set(base);
+  out.set(suffix, base.length);
+  return out;
+}
+
 export async function createSessionToken(customerId: string, now = new Date()): Promise<string> {
   const iat = Math.floor(now.getTime() / 1000);
   return new SignJWT({})

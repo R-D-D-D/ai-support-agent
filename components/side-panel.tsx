@@ -10,6 +10,7 @@ import {
   type FaultMode,
   type OrderItem,
   type Refund,
+  type RefundRequest,
   type Shipment,
   type Ticket,
 } from '@/lib/types';
@@ -23,12 +24,14 @@ interface PanelOrder {
   items: OrderItem[];
   shipment: Shipment | null;
   refund: Refund | null;
+  refundRequests: RefundRequest[];
   tickets: Ticket[];
 }
 
 interface PanelData {
   orders: PanelOrder[];
   refunds: Refund[];
+  refundRequests: RefundRequest[];
   tickets: Ticket[];
   serverTime: string;
 }
@@ -64,7 +67,10 @@ export function SidePanel(props: {
   const faultCount = Object.values(props.faultConfig).filter((m) => m && m !== 'none').length;
   const tabs: { id: Tab; label: string }[] = [
     { id: 'orders', label: 'Orders' },
-    { id: 'activity', label: `Refunds & tickets${data ? ` (${data.refunds.length + data.tickets.length})` : ''}` },
+    {
+      id: 'activity',
+      label: `Refunds & tickets${data ? ` (${data.refunds.length + data.refundRequests.length + data.tickets.length})` : ''}`,
+    },
     { id: 'runs', label: `Runs (${runs.length})` },
     { id: 'faults', label: faultCount ? `Faults (${faultCount})` : 'Faults' },
   ];
@@ -93,7 +99,9 @@ export function SidePanel(props: {
           Backstage view of the simulated backend for this demo. The agent sees this data only through its tools.
         </p>
         {tab === 'orders' && <OrdersTab orders={data?.orders ?? []} />}
-        {tab === 'activity' && <ActivityTab refunds={data?.refunds ?? []} tickets={data?.tickets ?? []} />}
+        {tab === 'activity' && (
+          <ActivityTab refunds={data?.refunds ?? []} requests={data?.refundRequests ?? []} tickets={data?.tickets ?? []} />
+        )}
         {tab === 'runs' && <RunsTab runs={runs} />}
         {tab === 'faults' && <FaultsTab config={props.faultConfig} onChange={props.onFaultConfigChange} />}
       </div>
@@ -132,6 +140,8 @@ function OrdersTab({ orders }: { orders: PanelOrder[] }) {
                 <span className="font-mono text-sm font-medium">{o.id}</span>
                 {o.shipment && <Badge tone={shipmentTone(o.shipment.status)}>{o.shipment.status.replace(/_/g, ' ')}</Badge>}
                 {o.refund && <Badge tone="green">refunded</Badge>}
+                {!o.refund && o.refundRequests.some((r) => r.status === 'pending') && <Badge tone="amber">refund requested</Badge>}
+                {!o.refund && o.refundRequests.at(-1)?.status === 'denied' && <Badge tone="red">refund denied</Badge>}
                 {o.tickets.some((t) => t.status === 'open') && <Badge tone="amber">ticket open</Badge>}
                 <span className="ml-auto text-sm">{formatMoney(o.total)}</span>
               </div>
@@ -199,9 +209,27 @@ function OrdersTab({ orders }: { orders: PanelOrder[] }) {
   );
 }
 
-function ActivityTab({ refunds, tickets }: { refunds: Refund[]; tickets: Ticket[] }) {
+function ActivityTab({ refunds, requests, tickets }: { refunds: Refund[]; requests: RefundRequest[]; tickets: Ticket[] }) {
   return (
     <div className="space-y-4 text-sm">
+      <section>
+        <h3 className="font-medium mb-1">Refund requests for staff</h3>
+        {requests.length === 0 && <p className="text-gray-500 text-xs">None yet.</p>}
+        <ul className="space-y-1">
+          {[...requests].reverse().map((r) => (
+            <li key={r.id} className="rounded border border-gray-200 bg-white px-3 py-2">
+              <div className="flex gap-2 items-center">
+                <span className="font-mono">{r.id}</span>
+                <span className="font-mono text-gray-500">{r.orderId}</span>
+                <Badge tone={r.status === 'approved' ? 'green' : r.status === 'denied' ? 'red' : 'amber'}>{r.status}</Badge>
+                <span className="ml-auto">{formatMoney(r.amount)}</span>
+              </div>
+              <div className="text-xs text-gray-500">{r.reviewReasons.join(' ')}</div>
+              {r.decisionNote && <div className="text-xs text-gray-700">Staff note: {r.decisionNote}</div>}
+            </li>
+          ))}
+        </ul>
+      </section>
       <section>
         <h3 className="font-medium mb-1">Refunds</h3>
         {refunds.length === 0 && <p className="text-gray-500 text-xs">None yet.</p>}
@@ -213,7 +241,9 @@ function ActivityTab({ refunds, tickets }: { refunds: Refund[]; tickets: Ticket[
                 <span className="font-mono text-gray-500">{r.orderId}</span>
                 <span className="ml-auto">{formatMoney(r.amount)}</span>
               </div>
-              <div className="text-xs text-gray-500">{formatDate(r.createdAt)} · {r.reason}</div>
+              <div className="text-xs text-gray-500">
+                {formatDate(r.createdAt)} · {r.issuedBy === 'bot' ? 'issued by the assistant' : 'approved by staff'} · {r.reason}
+              </div>
             </li>
           ))}
         </ul>

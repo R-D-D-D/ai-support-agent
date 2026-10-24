@@ -16,6 +16,9 @@ export async function createRefund(input: {
   customerId: string;
   amount: number;
   reason: string;
+  // 'bot', or the id of the staff member who approved it.
+  issuedBy: string;
+  requestId?: string | null;
 }): Promise<{ refund: Refund; created: boolean }> {
   await simulatedLatency();
   const store = getStore();
@@ -31,6 +34,8 @@ export async function createRefund(input: {
     reason: input.reason,
     createdAt: new Date().toISOString(),
     status: 'issued',
+    issuedBy: input.issuedBy,
+    requestId: input.requestId ?? null,
   };
   store.refunds.push(refund);
   return { refund: structuredClone(refund), created: true };
@@ -39,4 +44,13 @@ export async function createRefund(input: {
 export async function listRefundsForCustomer(customerId: string): Promise<Refund[]> {
   await simulatedLatency();
   return structuredClone(getStore().refunds.filter((r) => r.customerId === customerId));
+}
+
+// Total refunded by the bot so far on the current UTC calendar day, across all
+// customers. Used for the store-wide daily budget.
+export function botRefundedToday(now: Date = new Date()): number {
+  const day = now.toISOString().slice(0, 10);
+  return getStore()
+    .refunds.filter((r) => r.issuedBy === 'bot' && r.createdAt.slice(0, 10) === day)
+    .reduce((sum, r) => sum + r.amount, 0);
 }
