@@ -72,7 +72,8 @@ export class RunRecorder {
     this.record.status = status;
     this.record.endedAt = new Date().toISOString();
     if (error) this.record.error = error;
-    if (process.env.NODE_ENV !== 'test') {
+    // RUN_LOG_CONSOLE=off silences this, for example during evaluations.
+    if (process.env.NODE_ENV !== 'test' && process.env.RUN_LOG_CONSOLE !== 'off') {
       console.log(JSON.stringify({ type: 'agent_run', ...this.record }));
     }
   }
